@@ -1,51 +1,87 @@
 import argparse
-
-import whisper
 import os
-
+import logging
 from tqdm import tqdm
+import whisper
 
+# Configuração de logs
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# Constantes globais
+SUPPORTED_EXTENSIONS = (".m4a", ".mp3", ".wav")
 ASR_MODEL = whisper.load_model("base")
 
 
-def make_conversion(input_audio):
+def transcribe_audio(file_path):
+    """
+    Transcreve um arquivo de áudio usando o modelo Whisper.
+
+    Args:
+        file_path (str): Caminho do arquivo de áudio.
+
+    Returns:
+        str: Transcrição do áudio ou mensagem de erro.
+    """
     try:
-        response = ASR_MODEL.transcribe(input_audio)
-        return response["text"]
+        response = ASR_MODEL.transcribe(file_path)
+        return response.get("text", "")
     except Exception as e:
-        return f"Um erro inesperado ocorreu: {e}"
+        logging.error(f"Erro ao processar {file_path}: {e}")
+        return f"Erro ao processar o arquivo: {e}"
 
 
-def convert_audio_to_text(input_dir, output_dir):
-    # Verifica se o diretório de saída existe, caso contrário, cria
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    if not os.path.isdir(input_dir):
-        print(f"Diretório de entrada {input_dir} não encontrado.")
+def process_audio_files(input_dir, output_dir):
+    """
+    Processa todos os arquivos de áudio no diretório de entrada e salva as transcrições no diretório de saída.
+
+    Args:
+        input_dir (str): Diretório contendo arquivos de áudio.
+        output_dir (str): Diretório onde os arquivos transcritos serão salvos.
+    """
+    # Verifica e cria o diretório de saída se necessário
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Lista os arquivos suportados no diretório de entrada
+    audio_files = [
+        file for file in os.listdir(input_dir)
+        if file.endswith(SUPPORTED_EXTENSIONS)
+    ]
+
+    if not audio_files:
+        logging.warning(f"Nenhum arquivo suportado encontrado no diretório: {input_dir}")
         return
 
-    # Itera sobre todos os arquivos no diretório de entrada
-    for filename in tqdm(os.listdir(input_dir), desc=f"Convertendo audios para textos...", unit="file"):
-        if filename.endswith((".m4a", ".mp3", ".wav")):
-            # Caminho completo para o arquivo de entrada
-            input_audio = os.path.join(input_dir, filename)
+    # Itera e processa cada arquivo de áudio
+    for filename in tqdm(audio_files, desc="Convertendo áudios para textos...", unit="file"):
+        input_audio_path = os.path.join(input_dir, filename)
+        output_text_path = os.path.join(output_dir, os.path.splitext(filename)[0] + ".txt")
 
-            # Nome do arquivo de txt de saida
-            output_txt_file = os.path.join(output_dir, filename.replace(".m4a", ".txt"))
-            output_txt = make_conversion(input_audio)
-            with open(output_txt_file, "w", encoding="utf-8") as file:
-                file.write(output_txt)
+        # Transcreve e salva o resultado
+        transcription = transcribe_audio(input_audio_path)
+        with open(output_text_path, "w", encoding="utf-8") as output_file:
+            output_file.write(transcription)
 
-            # print(output_txt)
-    print("Conversão concluída.")
+    logging.info("Conversão concluída com sucesso.")
+
+
+def main():
+    """
+    Função principal para configuração de argumentos e execução do programa.
+    """
+    parser = argparse.ArgumentParser(description="Transcritor de áudios para texto usando Whisper.")
+    parser.add_argument("input_dir", type=str, help="Diretório contendo arquivos de áudio.")
+    parser.add_argument("--output_dir", type=str, default="arquivos_transcritos",
+                        help="Diretório de saída para os arquivos transcritos.")
+
+    args = parser.parse_args()
+
+    # Valida se o diretório de entrada existe
+    if not os.path.isdir(args.input_dir):
+        logging.error(f"Diretório de entrada não encontrado: {args.input_dir}")
+        return
+
+    process_audio_files(args.input_dir, args.output_dir)
 
 
 if __name__ == "__main__":
-    # Argumentos da linha de comando
-    parser = argparse.ArgumentParser(description="Trancritor de audioa")
-    parser.add_argument("input_dir", type=str, help="Diretório contendo arquivos de audio")
-    parser.add_argument("--output_dir", type=str, default="arquivos_transcritos",
-                        help="Diretório de saída com os áudios transcritos.")
-
-    args = parser.parse_args()
-    convert_audio_to_text(args.input_dir, args.output_dir)
+    main()
