@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 # Constantes globais
 SUPPORTED_EXTENSIONS = (".m4a", ".mp3", ".wav")
-ASR_MODEL = whisper.load_model("base")
+ASR_MODEL = whisper.load_model("small")
 
 
 def transcribe_audio(file_path):
