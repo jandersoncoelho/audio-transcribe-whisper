@@ -1,15 +1,15 @@
+import whisper
 import argparse
 import os
 import logging
 from tqdm import tqdm
-import whisper
 
 # Configuração de logs
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Constantes globais
 SUPPORTED_EXTENSIONS = (".m4a", ".mp3", ".wav")
-ASR_MODEL = whisper.load_model("small")
+ASR_MODEL = whisper.load_model("turbo")
 
 
 def transcribe_audio(file_path):
@@ -23,7 +23,7 @@ def transcribe_audio(file_path):
         str: Transcrição do áudio ou mensagem de erro.
     """
     try:
-        response = ASR_MODEL.transcribe(file_path)
+        response = ASR_MODEL.transcribe(file_path, fp16=False, verbose=False)
         return response.get("text", "")
     except Exception as e:
         logging.error(f"Erro ao processar {file_path}: {e}")
